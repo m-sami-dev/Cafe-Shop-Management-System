@@ -1,12 +1,16 @@
+using App.Core.Models;
+using App.Core.Services;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
-using App.Core.Models;
-using App.Core.Services;
+using System.Linq;
 
 namespace App.WindowsApp.UserControls
 {
+    
+
     public class ProductsControl : UserControl
     {
         private readonly ProductService _svc;
@@ -18,6 +22,8 @@ namespace App.WindowsApp.UserControls
         private ComboBox _cmbCategory;
         private Button _btnAdd, _btnEdit, _btnView, _btnDelete, _btnRefresh;
         private Label _lblCount;
+        private bool _loading = false;
+        private List<Product> _allProducts = new List<Product>();
 
         public ProductsControl(Action<string> updateStatus)
         {
@@ -52,13 +58,20 @@ namespace App.WindowsApp.UserControls
             //    Font = new Font("Segoe UI", 9.5f)
             //};
             // ── Search bar ────────────────────────────────────────────────────
+            //_txtSearch = new TextBox
+            //{
+            //    Location = new Point(10, 56),
+            //    Size = new Size(300, 28),
+            //    Font = new Font("Segoe UI", 9.5f),
+            //    Text = "🔍 Search by name or description..."
+            //};
             _txtSearch = new TextBox
             {
                 Location = new Point(10, 56),
                 Size = new Size(300, 28),
-                Font = new Font("Segoe UI", 9.5f),
-                Text = "🔍 Search by name or description..."
+                Font = new Font("Segoe UI", 9.5f)
             };
+
             _txtSearch.TextChanged += (s, e) => FilterGrid();
             Controls.Add(_txtSearch);
 
@@ -152,8 +165,29 @@ namespace App.WindowsApp.UserControls
         }
 
         // ── Async load ────────────────────────────────────────────────────────
+        //private async void LoadAsync()
+        //{
+        //    _updateStatus("Loading products...");
+        //    SetButtonsEnabled(false);
+
+        //    var products = await _svc.GetAllAsync();
+
+        //    // Populate category filter
+        //    _cmbCategory.Items.Clear();
+        //    _cmbCategory.Items.Add("All Categories");
+        //    foreach (var cat in _svc.GetCategories())
+        //        _cmbCategory.Items.Add(cat);
+        //    _cmbCategory.SelectedIndex = 0;
+
+        //    _bindingSource.DataSource = products;
+        //    ConfigureColumns();
+        //    UpdateCount();
+        //    SetButtonsEnabled(true);
+        //    _updateStatus($"Products loaded — {products.Count} records");
+        //}
         private async void LoadAsync()
         {
+            _loading = true;   // ← events rok do
             _updateStatus("Loading products...");
             SetButtonsEnabled(false);
 
@@ -165,11 +199,12 @@ namespace App.WindowsApp.UserControls
             foreach (var cat in _svc.GetCategories())
                 _cmbCategory.Items.Add(cat);
             _cmbCategory.SelectedIndex = 0;
-
+            _allProducts = products;
             _bindingSource.DataSource = products;
             ConfigureColumns();
             UpdateCount();
             SetButtonsEnabled(true);
+            _loading = false;  // ← ab events allow karo
             _updateStatus($"Products loaded — {products.Count} records");
         }
 
@@ -186,20 +221,57 @@ namespace App.WindowsApp.UserControls
                 _grid.Columns["IsAvailable"].HeaderText = "Available";
         }
 
+        //private void FilterGrid()
+        //{
+        //    var keyword = _txtSearch.Text.Trim();
+        //    var category = _cmbCategory.SelectedItem?.ToString();
+        //    if (category == "All Categories") category = "";
+
+        //    List<Product> results;
+        //    if (string.IsNullOrWhiteSpace(keyword))
+        //        results = _svc.GetAll();
+        //    else
+        //        results = _svc.Search(keyword, category);
+
+        //    if (!string.IsNullOrWhiteSpace(category) && string.IsNullOrWhiteSpace(keyword))
+        //        results = _svc.Search("", category);
+
+        //    _bindingSource.DataSource = results;
+        //    ConfigureColumns();
+        //    UpdateCount();
+        //}
         private void FilterGrid()
         {
-            var keyword = _txtSearch.Text.Trim();
+            if (_loading) return;
+
+            var keyword = _txtSearch.Text.Trim().ToLower();
             var category = _cmbCategory.SelectedItem?.ToString();
             if (category == "All Categories") category = "";
 
-            List<Product> results;
-            if (string.IsNullOrWhiteSpace(keyword))
-                results = _svc.GetAll();
-            else
-                results = _svc.Search(keyword, category);
+            // Pehle poori list lo jo already load ho chuki hai
+            var allProducts = _allProducts;
 
-            if (!string.IsNullOrWhiteSpace(category) && string.IsNullOrWhiteSpace(keyword))
-                results = _svc.Search("", category);
+            // Agar list null hai toh database se lo
+            if (allProducts == null)
+            {
+                _bindingSource.DataSource = _svc.GetAll();
+                ConfigureColumns();
+                UpdateCount();
+                return;
+            }
+
+            // Ab directly C# mein filter karo — database call nahi
+            var results = allProducts.Where(p =>
+            {
+                bool matchKeyword = string.IsNullOrEmpty(keyword)
+                                  || p.Name.ToLower().Contains(keyword)
+                                  || (p.Description ?? "").ToLower().Contains(keyword);
+
+                bool matchCategory = string.IsNullOrEmpty(category)
+                                  || p.Category == category;
+
+                return matchKeyword && matchCategory;
+            }).ToList();
 
             _bindingSource.DataSource = results;
             ConfigureColumns();

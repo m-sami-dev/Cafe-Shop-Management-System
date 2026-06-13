@@ -131,19 +131,47 @@ namespace App.Core.Services
         }
 
         // ── Search ───────────────────────────────────────────────────────────
+        //public List<Product> Search(string keyword, string category = "")
+        //{
+        //    var list = new List<Product>();
+        //    var sql  = "SELECT * FROM Products WHERE (Name LIKE @kw OR Description LIKE @kw)";
+        //    if (!string.IsNullOrWhiteSpace(category)) sql += " AND Category=@cat";
+        //    sql += " ORDER BY Name";
+
+        //    using (var conn = new SqlConnection(_connectionString))
+        //    using (var cmd  = new SqlCommand(sql, conn))
+        //    {
+        //        cmd.Parameters.Add(new SqlParameter("@kw", SqlDbType.NVarChar, 102) { Value = $"%{keyword}%" });
+        //        if (!string.IsNullOrWhiteSpace(category))
+        //            cmd.Parameters.Add(new SqlParameter("@cat", SqlDbType.NVarChar, 50) { Value = category });
+        //        conn.Open();
+        //        using (var r = cmd.ExecuteReader())
+        //            while (r.Read()) list.Add(MapReader(r));
+        //    }
+        //    return list;
+        //}
         public List<Product> Search(string keyword, string category = "")
         {
             var list = new List<Product>();
-            var sql  = "SELECT * FROM Products WHERE (Name LIKE @kw OR Description LIKE @kw)";
-            if (!string.IsNullOrWhiteSpace(category)) sql += " AND Category=@cat";
+
+            bool hasKeyword = !string.IsNullOrWhiteSpace(keyword);
+            bool hasCategory = !string.IsNullOrWhiteSpace(category);
+
+            var sql = "SELECT * FROM Products WHERE 1=1";
+            if (hasKeyword) sql += " AND (Name LIKE @kw OR Description LIKE @kw)";
+            if (hasCategory) sql += " AND Category = @cat";
             sql += " ORDER BY Name";
 
             using (var conn = new SqlConnection(_connectionString))
-            using (var cmd  = new SqlCommand(sql, conn))
+            using (var cmd = new SqlCommand(sql, conn))
             {
-                cmd.Parameters.Add(new SqlParameter("@kw", SqlDbType.NVarChar, 102) { Value = $"%{keyword}%" });
-                if (!string.IsNullOrWhiteSpace(category))
-                    cmd.Parameters.Add(new SqlParameter("@cat", SqlDbType.NVarChar, 50) { Value = category });
+                if (hasKeyword)
+                    cmd.Parameters.Add(new SqlParameter("@kw", SqlDbType.NVarChar, 102)
+                    { Value = $"%{keyword}%" });
+                if (hasCategory)
+                    cmd.Parameters.Add(new SqlParameter("@cat", SqlDbType.NVarChar, 50)
+                    { Value = category });
+
                 conn.Open();
                 using (var r = cmd.ExecuteReader())
                     while (r.Read()) list.Add(MapReader(r));

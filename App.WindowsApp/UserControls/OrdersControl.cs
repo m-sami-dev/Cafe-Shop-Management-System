@@ -1,8 +1,11 @@
-using System;
-using System.Drawing;
-using System.Windows.Forms;
 using App.Core.Models;
 using App.Core.Services;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+using System.Linq;
 
 namespace App.WindowsApp.UserControls
 {
@@ -16,6 +19,8 @@ namespace App.WindowsApp.UserControls
         private ComboBox      _cmbStatus;
         private Label         _lblCount;
         private Button        _btnAdd, _btnEdit, _btnView, _btnDelete, _btnRefresh;
+        private List<Order> _allOrders = new List<Order>();
+
 
         public OrdersControl(Action<string> updateStatus)
         {
@@ -47,12 +52,18 @@ namespace App.WindowsApp.UserControls
             //    Location = new Point(10, 56), Size = new Size(280, 28),
             //    Font = new Font("Segoe UI", 9.5f)
             //};
+            //_txtSearch = new TextBox
+            //{
+            //    Location = new Point(10, 56),
+            //    Size = new Size(280, 28),
+            //    Font = new Font("Segoe UI", 9.5f),
+            //    Text = "🔍 Search by order ID or customer..."
+            //};
             _txtSearch = new TextBox
             {
                 Location = new Point(10, 56),
                 Size = new Size(280, 28),
-                Font = new Font("Segoe UI", 9.5f),
-                Text = "🔍 Search by order ID or customer..."
+                Font = new Font("Segoe UI", 9.5f)
             };
 
             _txtSearch.TextChanged += (s, e) => FilterGrid();
@@ -140,6 +151,7 @@ namespace App.WindowsApp.UserControls
         {
             _updateStatus("Loading orders...");
             var list = await _svc.GetAllAsync();
+            _allOrders = list;
             _bindingSource.DataSource = list;
             HideCol("Notes"); HideCol("CustomerId"); HideCol("Items");
             if (_grid.Columns["TotalAmount"] != null)
@@ -148,19 +160,41 @@ namespace App.WindowsApp.UserControls
             _updateStatus($"Orders loaded — {list.Count} records");
         }
 
+        //private void FilterGrid()
+        //{
+        //    var kw     = _txtSearch.Text.Trim();
+        //    var status = _cmbStatus.SelectedItem?.ToString();
+        //    if (status == "All Statuses") status = "";
+
+        //    var list = string.IsNullOrWhiteSpace(kw)
+        //        ? _svc.Search("", status)
+        //        : _svc.Search(kw, status);
+
+        //    _bindingSource.DataSource = list;
+        //    HideCol("Notes"); HideCol("CustomerId"); HideCol("Items");
+        //    _lblCount.Text = $"Showing {list.Count} order(s)";
+        //}
         private void FilterGrid()
         {
-            var kw     = _txtSearch.Text.Trim();
+            var kw = _txtSearch.Text.Trim().ToLower();
             var status = _cmbStatus.SelectedItem?.ToString();
             if (status == "All Statuses") status = "";
 
-            var list = string.IsNullOrWhiteSpace(kw)
-                ? _svc.Search("", status)
-                : _svc.Search(kw, status);
+            var results = _allOrders.Where(o =>
+            {
+                bool matchKw = string.IsNullOrEmpty(kw)
+                            || o.OrderId.ToLower().Contains(kw)
+                            || o.CustomerName.ToLower().Contains(kw);
 
-            _bindingSource.DataSource = list;
+                bool matchStatus = string.IsNullOrEmpty(status)
+                                || o.Status == status;
+
+                return matchKw && matchStatus;
+            }).ToList();
+
+            _bindingSource.DataSource = results;
             HideCol("Notes"); HideCol("CustomerId"); HideCol("Items");
-            _lblCount.Text = $"Showing {list.Count} order(s)";
+            _lblCount.Text = $"Showing {results.Count} order(s)";
         }
 
         private void HideCol(string name)

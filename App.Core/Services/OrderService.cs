@@ -202,19 +202,48 @@ namespace App.Core.Services
         }
 
         // ── Search ───────────────────────────────────────────────────────────
+        //public List<Order> Search(string keyword, string status = "")
+        //{
+        //    var list = new List<Order>();
+        //    var sql  = "SELECT * FROM Orders WHERE (CustomerName LIKE @kw OR OrderId LIKE @kw)";
+        //    if (!string.IsNullOrWhiteSpace(status)) sql += " AND Status=@status";
+        //    sql += " ORDER BY OrderDate DESC";
+
+        //    using (var conn = new SqlConnection(_connectionString))
+        //    using (var cmd  = new SqlCommand(sql, conn))
+        //    {
+        //        cmd.Parameters.Add(new SqlParameter("@kw", SqlDbType.NVarChar, 102) { Value = $"%{keyword}%" });
+        //        if (!string.IsNullOrWhiteSpace(status))
+        //            cmd.Parameters.Add(new SqlParameter("@status", SqlDbType.NVarChar, 20) { Value = status });
+        //        conn.Open();
+        //        using (var r = cmd.ExecuteReader())
+        //            while (r.Read()) list.Add(MapOrderReader(r));
+        //    }
+        //    return list;
+        //}
+        
         public List<Order> Search(string keyword, string status = "")
         {
             var list = new List<Order>();
-            var sql  = "SELECT * FROM Orders WHERE (CustomerName LIKE @kw OR OrderId LIKE @kw)";
-            if (!string.IsNullOrWhiteSpace(status)) sql += " AND Status=@status";
+
+            bool hasKeyword = !string.IsNullOrWhiteSpace(keyword);
+            bool hasStatus = !string.IsNullOrWhiteSpace(status);
+
+            var sql = "SELECT * FROM Orders WHERE 1=1";
+            if (hasKeyword) sql += " AND (CustomerName LIKE @kw OR OrderId LIKE @kw)";
+            if (hasStatus) sql += " AND Status = @status";
             sql += " ORDER BY OrderDate DESC";
 
             using (var conn = new SqlConnection(_connectionString))
-            using (var cmd  = new SqlCommand(sql, conn))
+            using (var cmd = new SqlCommand(sql, conn))
             {
-                cmd.Parameters.Add(new SqlParameter("@kw", SqlDbType.NVarChar, 102) { Value = $"%{keyword}%" });
-                if (!string.IsNullOrWhiteSpace(status))
-                    cmd.Parameters.Add(new SqlParameter("@status", SqlDbType.NVarChar, 20) { Value = status });
+                if (hasKeyword)
+                    cmd.Parameters.Add(new SqlParameter("@kw", SqlDbType.NVarChar, 102)
+                    { Value = $"%{keyword}%" });
+                if (hasStatus)
+                    cmd.Parameters.Add(new SqlParameter("@status", SqlDbType.NVarChar, 20)
+                    { Value = status });
+
                 conn.Open();
                 using (var r = cmd.ExecuteReader())
                     while (r.Read()) list.Add(MapOrderReader(r));
