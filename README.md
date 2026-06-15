@@ -170,6 +170,6 @@ OrderItems (ItemId NVARCHAR PK, OrderId, ProductId, ProductName, Quantity, UnitP
 | C# .NET Framework 4.7.2 | Programming language |
 | Windows Forms (WinForms) | User Interface |
 | ADO.NET | Data access layer |
-| SQL Server | Database |
+| SQL Server LocalDB `(localdb)\MSSQLLocalDB` | Database |
 | LiveChartsCore.SkiaSharpView.WinForms | Charts (Bar + Pie) |
 | Visual Studio 2022 | IDE |
